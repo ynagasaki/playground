@@ -9,7 +9,8 @@ public class TilePicker : MonoBehaviour {
 	public TileData tileData;
 
 	private GameObject pieceToSet = null;
-	private int pieceToSetId;
+
+	private readonly Dictionary<Vector3, GameObject> posToPieceMap = new Dictionary<Vector3, GameObject>();
 
 	void Update () {
 		// https://docs.unity3d.com/ScriptReference/EventSystems.EventSystem.IsPointerOverGameObject.html
@@ -18,13 +19,36 @@ public class TilePicker : MonoBehaviour {
 			Vector3? intersectionPoint = findGridPlaneIntersection(ray);
 			if (intersectionPoint.HasValue) {
 				if (pieceToSet != null) {
-					pieceToSet.transform.position = intersectionPoint.Value;
-					pieceToSet = null;
-					tileData.decrPiece(pieceToSetId);
-					setPiece(pieceToSetId);
+					if (placePieceIfAppropriate(intersectionPoint.Value)) {
+						int pieceId = tileData.getId(pieceToSet);
+						pieceToSet = null;
+						setPiece(pieceId);
+					}
+				} else {
+					removeExistingPieceIfAny(intersectionPoint.Value);
 				}
 			}
 		}
+	}
+
+	bool placePieceIfAppropriate(Vector3 coord) {
+		if (posToPieceMap.ContainsKey(coord)) {
+			return false;
+		}
+		pieceToSet.transform.position = coord;
+		posToPieceMap.Add(coord, pieceToSet);
+		tileData.decrPiece(tileData.getId(pieceToSet));
+		return true;
+	}
+
+	void removeExistingPieceIfAny(Vector3 coord) {
+		if (!posToPieceMap.ContainsKey(coord)) {
+			return;
+		}
+		GameObject piece = posToPieceMap[coord];
+		Destroy(piece);
+		tileData.incrPiece(tileData.getId(piece));
+		posToPieceMap.Remove(coord);
 	}
 
 	Vector3? findGridPlaneIntersection(Ray ray) {
@@ -44,7 +68,6 @@ public class TilePicker : MonoBehaviour {
 		if (pieceId >= 0 && tileData.hasPiece(pieceId)) {
 			Vector3 pos = piecePreviewCamera.transform.position + piecePreviewCamera.transform.forward;
 			pieceToSet = GameObject.Instantiate(tileData.pieces[pieceId], pos, Quaternion.identity) as GameObject;
-			pieceToSetId = pieceId;
 		} else {
 			pieceToSet = null;
 		}

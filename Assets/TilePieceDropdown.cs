@@ -14,9 +14,10 @@ public class TilePieceDropdown : MonoBehaviour {
 	public void resetOptions(TileData data) {
 		Dropdown dropdown = GetComponent<Dropdown>();
 		List<string> options = new List<string>();
-		options.Add("None");
+		options.Add("Erase");
 		for (int id = 0; id < data.count(); id ++) {
-			options.Add(tileData.names[id] + " (" + data.counts[id] + ")");
+			string option = tileData.names[id] + " (" + data.counts[id] + ")";
+			options.Add(option);
 		}
 		dropdown.ClearOptions();
 		dropdown.AddOptions(options);
