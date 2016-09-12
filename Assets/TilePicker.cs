@@ -66,7 +66,7 @@ public class TilePicker : MonoBehaviour {
 			Destroy(pieceToSet);
 		}
 		if (pieceId >= 0 && tileData.hasPiece(pieceId)) {
-			Vector3 pos = piecePreviewCamera.transform.position + piecePreviewCamera.transform.forward;
+			Vector3 pos = piecePreviewCamera.transform.position + piecePreviewCamera.transform.forward * 1.25f;
 			pieceToSet = GameObject.Instantiate(tileData.pieces[pieceId], pos, Quaternion.identity) as GameObject;
 		} else {
 			pieceToSet = null;

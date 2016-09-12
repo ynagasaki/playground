@@ -10,7 +10,7 @@ public class RailCurveRenderer : MonoBehaviour {
 		float STEP = PI_HALF / (float) vertexCount;
 		List<Vector3> positionsList = new List<Vector3>();
 
-		for (float theta = 0f; theta <= PI_HALF; theta += STEP) {
+		for (float theta = 0f; theta <= PI_HALF + 0.00001f; theta += STEP) {
 			positionsList.Add(calcCirclePos(theta));
 		}
 
