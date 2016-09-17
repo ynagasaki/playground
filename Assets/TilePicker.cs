@@ -10,9 +10,10 @@ public class TilePicker : MonoBehaviour {
 
 	private GameObject pieceToSet = null;
 
-	private readonly Dictionary<Vector3, GameObject> posToPieceMap = new Dictionary<Vector3, GameObject>();
+	private readonly Dictionary<Vector3, GameObject> posToRailMap = new Dictionary<Vector3, GameObject>();
+	private readonly Dictionary<Vector3, GameObject> posToTrainMap = new Dictionary<Vector3, GameObject>();
 
-	void Update () {
+	void Update() {
 		// https://docs.unity3d.com/ScriptReference/EventSystems.EventSystem.IsPointerOverGameObject.html
 		if (Input.GetMouseButtonUp(0) && !EventSystem.current.IsPointerOverGameObject()) {
 			Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
@@ -31,24 +32,52 @@ public class TilePicker : MonoBehaviour {
 		}
 	}
 
-	bool placePieceIfAppropriate(Vector3 coord) {
-		if (posToPieceMap.ContainsKey(coord)) {
+	bool isTrain(GameObject piece) {
+		return piece.GetComponent<Train>() != null;
+	}
+
+	bool placeTrainIfAppropriate(Vector3 coord) {
+		if (posToTrainMap.ContainsKey(coord) || !posToRailMap.ContainsKey(coord)) {
+			return false;
+		}
+
+		Train train = pieceToSet.GetComponent<Train>();
+		train.setCurrentTile(posToRailMap[coord]);
+		train.setCurvePos(0.5f);
+
+		posToTrainMap.Add(coord, pieceToSet);
+		tileData.decrPiece(tileData.getId(pieceToSet));
+
+		return true;
+	}
+
+	bool placeRailIfAppropriate(Vector3 coord) {
+		if (posToRailMap.ContainsKey(coord)) {
 			return false;
 		}
 		pieceToSet.transform.position = coord;
-		posToPieceMap.Add(coord, pieceToSet);
+		posToRailMap.Add(coord, pieceToSet);
 		tileData.decrPiece(tileData.getId(pieceToSet));
 		return true;
 	}
 
-	void removeExistingPieceIfAny(Vector3 coord) {
-		if (!posToPieceMap.ContainsKey(coord)) {
-			return;
+	bool placePieceIfAppropriate(Vector3 coord) {
+		if (isTrain(pieceToSet)) {
+			return placeTrainIfAppropriate(coord);
 		}
-		GameObject piece = posToPieceMap[coord];
-		Destroy(piece);
-		tileData.incrPiece(tileData.getId(piece));
-		posToPieceMap.Remove(coord);
+		return placeRailIfAppropriate(coord);
+	}
+
+	void removeExistingPieceIfAny(Vector3 coord) {
+		// choose which map to discard from: prefer removing train pieces first
+		Dictionary<Vector3, GameObject> map = posToTrainMap.ContainsKey(coord) ? 
+			posToTrainMap : posToRailMap.ContainsKey(coord) ? posToRailMap : null;
+		if (map != null) {
+			GameObject piece = map[coord];
+			Destroy(piece);
+			tileData.incrPiece(tileData.getId(piece));
+			map.Remove(coord);
+		}
 	}
 
 	Vector3? findGridPlaneIntersection(Ray ray) {
