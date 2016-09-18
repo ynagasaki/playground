@@ -2,8 +2,18 @@
 using System.Collections;
 
 public class Train : MonoBehaviour {
+	public float kmph = 10f;
+
+	private TileMap tileMap;
 	private GameObject currentTile;
 	private float curvePos;
+
+	void Start() {
+		GameObject tileMapObject = GameObject.Find("TileMap");
+		Debug.Assert(tileMapObject != null);
+		tileMap = tileMapObject.GetComponent<TileMap>();
+		Debug.Assert(tileMap != null);
+	}
 
 	public void setCurrentTile(GameObject tile) {
 		currentTile = tile;
@@ -25,10 +35,17 @@ public class Train : MonoBehaviour {
 	}
 
 	void Update() {
-		this.curvePos += Time.deltaTime;
+		if (this.currentTile == null) {
+			return;
+		}
+
+		this.curvePos += Time.deltaTime * kmph * 0.2778f;
+
 		if (this.curvePos > 1f) {
+			this.setCurrentTile(this.tileMap.getNextRail(this.transform));
 			this.curvePos = 1f - this.curvePos;
 		}
+
 		this.setCurvePos(this.curvePos);
 	}
 }

@@ -23,7 +23,8 @@ public class TilePieceDropdown : MonoBehaviour {
 		dropdown.AddOptions(options);
 	}
 
-	public void setPiece(int id) {
+	public void optionChanged(int id) {
 		tilePicker.setPiece(id - 1);
+		tilePicker.setEraseMode(id == 0);
 	}
 }

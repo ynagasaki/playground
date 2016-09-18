@@ -7,11 +7,10 @@ public class TilePicker : MonoBehaviour {
 	public GameObject gridLinesObject;
 	public GameObject markerObject;
 	public TileData tileData;
+	public TileMap tileMap;
 
 	private GameObject pieceToSet = null;
-
-	private readonly Dictionary<Vector3, GameObject> posToRailMap = new Dictionary<Vector3, GameObject>();
-	private readonly Dictionary<Vector3, GameObject> posToTrainMap = new Dictionary<Vector3, GameObject>();
+	private bool eraseMode = false;
 
 	void Update() {
 		// https://docs.unity3d.com/ScriptReference/EventSystems.EventSystem.IsPointerOverGameObject.html
@@ -21,11 +20,12 @@ public class TilePicker : MonoBehaviour {
 			if (intersectionPoint.HasValue) {
 				if (pieceToSet != null) {
 					if (placePieceIfAppropriate(intersectionPoint.Value)) {
+						Debug.Log("Tile pos: " + intersectionPoint.Value);
 						int pieceId = tileData.getId(pieceToSet);
 						pieceToSet = null;
 						setPiece(pieceId);
 					}
-				} else {
+				} else if (eraseMode) {
 					removeExistingPieceIfAny(intersectionPoint.Value);
 				}
 			}
@@ -37,27 +37,29 @@ public class TilePicker : MonoBehaviour {
 	}
 
 	bool placeTrainIfAppropriate(Vector3 coord) {
-		if (posToTrainMap.ContainsKey(coord) || !posToRailMap.ContainsKey(coord)) {
+		if (tileMap.trainExists(coord) || !tileMap.railExists(coord)) {
 			return false;
 		}
 
 		Train train = pieceToSet.GetComponent<Train>();
-		train.setCurrentTile(posToRailMap[coord]);
+		train.setCurrentTile(tileMap.getRail(coord));
 		train.setCurvePos(0.5f);
 
-		posToTrainMap.Add(coord, pieceToSet);
+		tileMap.putTrain(coord, pieceToSet);
 		tileData.decrPiece(tileData.getId(pieceToSet));
 
 		return true;
 	}
 
 	bool placeRailIfAppropriate(Vector3 coord) {
-		if (posToRailMap.ContainsKey(coord)) {
+		if (tileMap.railExists(coord)) {
 			return false;
 		}
+
 		pieceToSet.transform.position = coord;
-		posToRailMap.Add(coord, pieceToSet);
+		tileMap.putRail(coord, pieceToSet);
 		tileData.decrPiece(tileData.getId(pieceToSet));
+
 		return true;
 	}
 
@@ -70,13 +72,10 @@ public class TilePicker : MonoBehaviour {
 
 	void removeExistingPieceIfAny(Vector3 coord) {
 		// choose which map to discard from: prefer removing train pieces first
-		Dictionary<Vector3, GameObject> map = posToTrainMap.ContainsKey(coord) ? 
-			posToTrainMap : posToRailMap.ContainsKey(coord) ? posToRailMap : null;
-		if (map != null) {
-			GameObject piece = map[coord];
-			Destroy(piece);
-			tileData.incrPiece(tileData.getId(piece));
-			map.Remove(coord);
+		GameObject pieceToRemove = tileMap.removeTrain(coord) ?? tileMap.removeRail(coord);
+		if (pieceToRemove != null) {
+			Destroy(pieceToRemove);
+			tileData.incrPiece(tileData.getId(pieceToRemove));
 		}
 	}
 
@@ -88,6 +87,10 @@ public class TilePicker : MonoBehaviour {
 			return gridLinesObject.GetComponent<GridLines>().closestTilePosition(ray.GetPoint(rayDistance));
 		}
 		return null;
+	}
+
+	public void setEraseMode(bool val) {
+		eraseMode = val;
 	}
 
 	public void setPiece(int pieceId) {
