@@ -102,7 +102,7 @@ public class TileMap : MonoBehaviour {
 		} while (tile != startTile && count > 0);
 
 		// [figure out if we've hit all the tiles. if not, just remove the ones that we didn't hit i guess]
-		return true;
+		return tile == startTile;
 	}
 
 	public GameObject getNextRail(Transform targetTransform) {

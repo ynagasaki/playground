@@ -43,6 +43,7 @@ public class Train : MonoBehaviour {
 
 		if (this.curvePos > 1f) { // TODO: fix this
 			this.setCurrentTile(this.tileMap.getNextRail(this.transform));
+			this.curvePos -= 1f;
 		}
 
 		this.setCurvePos(this.curvePos);
