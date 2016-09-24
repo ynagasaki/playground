@@ -98,8 +98,16 @@ public class TilePicker : MonoBehaviour {
 			Destroy(pieceToSet);
 		}
 		if (pieceId >= 0 && tileData.hasPiece(pieceId)) {
+			GameObject piece = tileData.pieces[pieceId];
+
+			if (isTrain(piece) && !tileMap.buildTrack()) {
+				Debug.Log("Cannot set train b/c track building failed.");
+				pieceToSet = null;
+				return;
+			}
+
 			Vector3 pos = piecePreviewCamera.transform.position + piecePreviewCamera.transform.forward * 1.25f;
-			pieceToSet = GameObject.Instantiate(tileData.pieces[pieceId], pos, Quaternion.identity) as GameObject;
+			pieceToSet = GameObject.Instantiate(piece, pos, Quaternion.identity) as GameObject;
 		} else {
 			pieceToSet = null;
 		}

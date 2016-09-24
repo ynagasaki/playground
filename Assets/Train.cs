@@ -41,9 +41,8 @@ public class Train : MonoBehaviour {
 
 		this.curvePos += Time.deltaTime * kmph * 0.2778f;
 
-		if (this.curvePos > 1f) {
+		if (this.curvePos > 1f) { // TODO: fix this
 			this.setCurrentTile(this.tileMap.getNextRail(this.transform));
-			this.curvePos = 1f - this.curvePos;
 		}
 
 		this.setCurvePos(this.curvePos);

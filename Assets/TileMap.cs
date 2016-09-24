@@ -53,6 +53,58 @@ public class TileMap : MonoBehaviour {
 		return piece;
 	}
 
+	public bool buildTrack() {
+		int count = posToRailMap.Count;
+
+		if (count == 0) {
+			return false;
+		}
+
+		float gridLineSpacing20Pct = gridLines.gridlineSpacing() * 0.2f;
+
+		// pick a tile, pick last endpoint
+		Dictionary<Vector2, GameObject>.Enumerator iter = posToRailMap.GetEnumerator();
+		iter.MoveNext();
+		GameObject tile = iter.Current.Value;
+		BezierCurve curve = tile.GetComponentInChildren<BezierCurve>();
+		GameObject startTile = tile;
+
+		do {
+			Vector3 endpoint = curve.points[curve.points.Length - 1];
+
+			// figure out the world space of the endpoint
+			Vector3 endpointWorldSpace = tile.transform.TransformPoint(endpoint);
+
+			// figure out if that leads to another tile
+			Vector3 slightlyOverTileBoundary = endpointWorldSpace + curve.GetDirection(1f) * gridLineSpacing20Pct;
+			Vector3 expectedNeighborTilePos = gridLines.closestTilePosition(slightlyOverTileBoundary);
+
+			// if not, return false
+			if (!posToRailMap.ContainsKey(toMapKey(expectedNeighborTilePos))) {
+				return false;
+			}
+
+			// if so, [connect the pieces and] figure out if endpoints need to be swapped
+			GameObject neighborTile = posToRailMap[toMapKey(expectedNeighborTilePos)];
+			BezierCurve neighborCurve = neighborTile.GetComponentInChildren<BezierCurve>();
+			Vector3 neighborEndpoint = neighborCurve.points[neighborCurve.points.Length - 1];
+			Vector3 neighborEndpointWorldSpace = neighborTile.transform.TransformPoint(neighborEndpoint);
+
+			if (Mathf.Abs((endpointWorldSpace - neighborEndpointWorldSpace).magnitude) < gridLineSpacing20Pct) {
+				neighborCurve.reversePoints();
+			}
+
+			tile = neighborTile;
+			curve = neighborCurve;
+			count --;
+
+			// keep going; stop until loop is complete
+		} while (tile != startTile && count > 0);
+
+		// [figure out if we've hit all the tiles. if not, just remove the ones that we didn't hit i guess]
+		return true;
+	}
+
 	public GameObject getNextRail(Transform targetTransform) {
 		// determine the next rail piece by "jumping forward" a bit and seeing what tile that position corresponds to
 		Vector3 jumpedPos = targetTransform.position + targetTransform.forward * 0.1f;

@@ -39,6 +39,15 @@ public class BezierCurve : MonoBehaviour {
 		};
 	}
 
+	public void reversePoints() {
+		for (int i = 0; i < points.Length / 2; i ++) {
+			int otherIdx = points.Length - 1 - i;
+			Vector3 other = points[otherIdx];
+			points[otherIdx] = points[i];
+			points[i] = other;
+		}
+	}
+
 	public Vector3 GetPoint(float t) {
 		return transform.TransformPoint(Bezier.GetPoint(points[0], points[1], points[2], points[3], t));
 	}
