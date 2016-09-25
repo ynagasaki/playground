@@ -4,6 +4,7 @@ using System.Collections.Generic;
 public class RailCurveRenderer : MonoBehaviour {
 	public float radius = 0.5f;
 	public int vertexCount = 10;
+	public float width = 0.05f;
 
 	void Start () {
 		float PI_HALF = Mathf.PI * 0.5f;
@@ -17,7 +18,7 @@ public class RailCurveRenderer : MonoBehaviour {
 		LineRenderer lineRenderer = GetComponent<LineRenderer>();
 		lineRenderer.SetVertexCount(positionsList.Count);
 		lineRenderer.SetPositions(positionsList.ToArray());
-		lineRenderer.SetWidth(0.1f, 0.1f);
+		lineRenderer.SetWidth(width, width);
 	}
 
 	Vector3 calcCirclePos(float theta) {

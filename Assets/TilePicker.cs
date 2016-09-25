@@ -20,7 +20,7 @@ public class TilePicker : MonoBehaviour {
 			if (intersectionPoint.HasValue) {
 				if (pieceToSet != null) {
 					if (placePieceIfAppropriate(intersectionPoint.Value)) {
-						Debug.Log("Tile pos: " + intersectionPoint.Value);
+						// Debug.Log("Tile pos: " + intersectionPoint.Value);
 						int pieceId = tileData.getId(pieceToSet);
 						pieceToSet = null;
 						setPiece(pieceId);

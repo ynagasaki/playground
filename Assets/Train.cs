@@ -2,12 +2,15 @@
 using System.Collections;
 
 public class Train : MonoBehaviour {
-	public float kmph = 10f;
+	public float maxSpeed = 10f;
 
 	private TileMap tileMap;
 	private GameObject currentTile;
 	private float curvePos;
 	private bool isRunning = false;
+
+	private float currSpeed = 0f;
+	private float targetSpeed = 0f;
 
 	public bool IsRunning {
 		get {
@@ -15,6 +18,12 @@ public class Train : MonoBehaviour {
 		}
 		set {
 			isRunning = value;
+
+			if (!value) { // TODO: clean this up too, this is gross
+				targetSpeed = currSpeed = 0f;
+			} else {
+				targetSpeed = maxSpeed;
+			}
 		}
 	}
 
@@ -27,6 +36,14 @@ public class Train : MonoBehaviour {
 
 	public void setCurrentTile(GameObject tile) {
 		currentTile = tile;
+
+		// TODO: clean this up, make this part of each tile or something; also, this 
+		// should be more proactive
+		if (currentTile.name.Contains("corner")) {
+			targetSpeed = maxSpeed * 0.2f;
+		} else if (currentTile.name.Contains("straight")) {
+			targetSpeed = maxSpeed;
+		}
 	}
 
 	public void setCurvePos(float t) {
@@ -49,7 +66,13 @@ public class Train : MonoBehaviour {
 			return;
 		}
 
-		this.curvePos += Time.deltaTime * kmph * 0.2778f;
+		this.curvePos += Time.deltaTime * currSpeed;
+
+		if (currSpeed < targetSpeed) {
+			this.currSpeed = Mathf.Min(currSpeed + Time.deltaTime, targetSpeed);
+		} else if (currSpeed > targetSpeed) {
+			this.currSpeed = Mathf.Max(currSpeed - Time.deltaTime * 5f, targetSpeed);
+		}
 
 		if (this.curvePos > 1f) { // TODO: fix this
 			this.setCurrentTile(this.tileMap.getNextRail(this.transform));
