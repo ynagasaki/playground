@@ -105,6 +105,29 @@ public class TileMap : MonoBehaviour {
 		return tile == startTile;
 	}
 
+	public bool startTrain() {
+		if (posToTrainMap.Count == 0) {
+			return false;
+		}
+		Dictionary<Vector2, GameObject>.Enumerator iter = posToTrainMap.GetEnumerator();
+		iter.MoveNext();
+		iter.Current.Value.GetComponent<Train>().IsRunning = true;
+		return true;
+	}
+
+	public bool stopTrain() {
+		if (posToTrainMap.Count == 0) {
+			return false;
+		}
+		Dictionary<Vector2, GameObject>.Enumerator iter = posToTrainMap.GetEnumerator();
+		iter.MoveNext();
+		Train train = iter.Current.Value.GetComponent<Train>();
+		train.IsRunning = false;
+		train.setCurrentTile(posToRailMap[iter.Current.Key]);
+		train.setCurvePos(0.5f);
+		return true;
+	}
+
 	public GameObject getNextRail(Transform targetTransform) {
 		// determine the next rail piece by "jumping forward" a bit and seeing what tile that position corresponds to
 		Vector3 jumpedPos = targetTransform.position + targetTransform.forward * 0.1f;

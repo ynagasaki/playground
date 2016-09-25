@@ -7,6 +7,16 @@ public class Train : MonoBehaviour {
 	private TileMap tileMap;
 	private GameObject currentTile;
 	private float curvePos;
+	private bool isRunning = false;
+
+	public bool IsRunning {
+		get {
+			return isRunning;
+		}
+		set {
+			isRunning = value;
+		}
+	}
 
 	void Start() {
 		GameObject tileMapObject = GameObject.Find("TileMap");
@@ -35,7 +45,7 @@ public class Train : MonoBehaviour {
 	}
 
 	void Update() {
-		if (this.currentTile == null) {
+		if (!IsRunning || this.currentTile == null) {
 			return;
 		}
 
