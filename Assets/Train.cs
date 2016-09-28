@@ -37,7 +37,7 @@ public class Train : MonoBehaviour {
 	public void setCurrentTile(GameObject tile) {
 		currentTile = tile;
 
-		// TODO: clean this up, make this part of each tile or something; also, this 
+		// TODO: clean this up, make this part of each tile or something; also, this
 		// should be more proactive
 		if (currentTile.name.Contains("corner")) {
 			targetSpeed = maxSpeed * 0.2f;
