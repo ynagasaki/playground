@@ -5,18 +5,36 @@ using UnityEngine.EventSystems;
 public class TilePicker : MonoBehaviour {
 	public Camera piecePreviewCamera;
 	public GameObject gridLinesObject;
-	public GameObject markerObject;
 	public TileData tileData;
 	public TileMap tileMap;
 
 	private GameObject pieceToSet = null;
 	private bool eraseMode = false;
+	private bool isDragging = false;
+
+	// https://docs.unity3d.com/ScriptReference/EventSystems.EventSystem.IsPointerOverGameObject.html
+	bool PointerIsOverUIElement {
+		get {
+			return EventSystem.current.IsPointerOverGameObject();
+		}
+	}
 
 	void Update() {
-		// https://docs.unity3d.com/ScriptReference/EventSystems.EventSystem.IsPointerOverGameObject.html
-		if (Input.GetMouseButtonUp(0) && !EventSystem.current.IsPointerOverGameObject()) {
+		if (isDragging && !PointerIsOverUIElement) {
 			Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-			Vector3? intersectionPoint = findGridPlaneIntersection(ray);
+			Vector3? intersectionPoint = findGridPlaneIntersection(ray, false);
+			pieceToSet.transform.position = intersectionPoint.Value + Camera.main.transform.position;
+		} else if (eraseMode && Input.GetMouseButtonUp(0) && !PointerIsOverUIElement) {
+			Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+			Vector3? intersectionPoint = findGridPlaneIntersection(ray, true);
+			removeExistingPieceIfAny(intersectionPoint.Value);
+		}
+	}
+
+	void performTilePlacement() {
+		if (Input.GetMouseButtonUp(0) && !PointerIsOverUIElement) {
+			Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+			Vector3? intersectionPoint = findGridPlaneIntersection(ray, true);
 			if (intersectionPoint.HasValue) {
 				if (pieceToSet != null) {
 					if (placePieceIfAppropriate(intersectionPoint.Value)) {
@@ -25,8 +43,6 @@ public class TilePicker : MonoBehaviour {
 						pieceToSet = null;
 						setPiece(pieceId);
 					}
-				} else if (eraseMode) {
-					removeExistingPieceIfAny(intersectionPoint.Value);
 				}
 			}
 		}
@@ -79,12 +95,16 @@ public class TilePicker : MonoBehaviour {
 		}
 	}
 
-	Vector3? findGridPlaneIntersection(Ray ray) {
+	Vector3? findGridPlaneIntersection(Ray ray, bool snapToGrid) {
 		// assume plane is horizontal: figure out where ray intersects
 		Plane plane = new Plane(Vector3.up, gridLinesObject.transform.position);
 		float rayDistance;
 		if (plane.Raycast(ray, out rayDistance)) {
-			return gridLinesObject.GetComponent<GridLines>().closestTilePosition(ray.GetPoint(rayDistance));
+			if (snapToGrid) {
+				return gridLinesObject.GetComponent<GridLines>().closestTilePosition(ray.GetPoint(rayDistance));
+			} else {
+				return ray.direction * rayDistance;
+			}
 		}
 		return null;
 	}
@@ -106,8 +126,8 @@ public class TilePicker : MonoBehaviour {
 				return;
 			}
 
-			Vector3 pos = piecePreviewCamera.transform.position + piecePreviewCamera.transform.forward * 1.25f;
-			pieceToSet = GameObject.Instantiate(piece, pos, Quaternion.identity) as GameObject;
+			pieceToSet = GameObject.Instantiate(piece, Vector3.zero, Quaternion.identity) as GameObject;
+			placePieceInPreview();
 		} else {
 			pieceToSet = null;
 		}
@@ -125,5 +145,31 @@ public class TilePicker : MonoBehaviour {
 			return;
 		}
 		pieceToSet.transform.Rotate(Vector3.up * -90f);
+	}
+
+	public void dragPieceBegin() {
+		if (pieceToSet == null) {
+			return;
+		}
+		isDragging = true;
+	}
+
+	public void dragPieceEnd() {
+		if (!isDragging) {
+			return;
+		}
+		isDragging = false;
+		if (PointerIsOverUIElement) {
+			placePieceInPreview();
+		} else {
+			performTilePlacement();
+		}
+	}
+
+	void placePieceInPreview() {
+		if (pieceToSet == null) {
+			return;
+		}
+		pieceToSet.transform.position = piecePreviewCamera.transform.position + piecePreviewCamera.transform.forward * 1.25f;
 	}
 }
