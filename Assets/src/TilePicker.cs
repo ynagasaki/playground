@@ -12,6 +12,8 @@ public class TilePicker : MonoBehaviour {
 	private bool eraseMode = false;
 	private bool isDragging = false;
 
+	private const float WITHIN_DIST_SQR = 0.04f;
+
 	// https://docs.unity3d.com/ScriptReference/EventSystems.EventSystem.IsPointerOverGameObject.html
 	bool PointerIsOverUIElement {
 		get {
@@ -23,7 +25,7 @@ public class TilePicker : MonoBehaviour {
 		if (isDragging && !PointerIsOverUIElement) {
 			Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
 			Vector3? intersectionPoint = findGridPlaneIntersection(ray, false);
-			pieceToSet.transform.position = intersectionPoint.Value + Camera.main.transform.position;
+			pieceToSet.transform.position = intersectionPoint.Value;
 		} else if (eraseMode && Input.GetMouseButtonUp(0) && !PointerIsOverUIElement) {
 			Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
 			Vector3? intersectionPoint = findGridPlaneIntersection(ray, true);
@@ -31,21 +33,22 @@ public class TilePicker : MonoBehaviour {
 		}
 	}
 
-	void performTilePlacement() {
+	bool performTilePlacement() {
 		if (Input.GetMouseButtonUp(0) && !PointerIsOverUIElement) {
 			Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
 			Vector3? intersectionPoint = findGridPlaneIntersection(ray, true);
 			if (intersectionPoint.HasValue) {
 				if (pieceToSet != null) {
 					if (placePieceIfAppropriate(intersectionPoint.Value)) {
-						// Debug.Log("Tile pos: " + intersectionPoint.Value);
 						int pieceId = tileData.getId(pieceToSet);
 						pieceToSet = null;
 						setPiece(pieceId);
+						return true;
 					}
 				}
 			}
 		}
+		return false;
 	}
 
 	bool isTrain(GameObject piece) {
@@ -53,28 +56,36 @@ public class TilePicker : MonoBehaviour {
 	}
 
 	bool placeTrainIfAppropriate(Vector3 coord) {
-		if (tileMap.trainExists(coord) || !tileMap.railExists(coord)) {
-			return false;
-		}
-
-		Train train = pieceToSet.GetComponent<Train>();
-		train.setCurrentTile(tileMap.getRail(coord));
-		train.setCurvePos(0.5f);
-
-		tileMap.putTrain(coord, pieceToSet);
-		tileData.decrPiece(tileData.getId(pieceToSet));
-
-		return true;
+		return false;
 	}
 
 	bool placeRailIfAppropriate(Vector3 coord) {
-		if (tileMap.railExists(coord)) {
-			return false;
+		TileRailPiece tileRail = pieceToSet.GetComponent<TileRailPiece>();
+
+		GameObject foundPiece = null;
+		Vector3? foundEndpoint = null;
+		Vector3? endpointToConnect = null;
+
+		if (!tileMap.IsEmpty) {
+			// figure out if this is an appropriate place to drop our new piece
+			if (!tileMap.getEndpointWithin(WITHIN_DIST_SQR, tileRail.StartPoint, out foundPiece, out foundEndpoint)) {
+				if (!tileMap.getEndpointWithin(WITHIN_DIST_SQR, tileRail.EndPoint, out foundPiece, out foundEndpoint)) {
+					return false;
+				} else {
+					endpointToConnect = tileRail.EndPoint;
+				}
+			} else {
+				endpointToConnect = tileRail.StartPoint;
+			}
+			Debug.Assert(foundPiece != null && foundEndpoint.HasValue && endpointToConnect.HasValue);
 		}
 
+		// drop the new piece
 		pieceToSet.transform.position = coord;
-		tileMap.putRail(coord, pieceToSet);
 		tileData.decrPiece(tileData.getId(pieceToSet));
+
+		// connect the piece to existing rail pieces
+		tileMap.connect(pieceToSet, endpointToConnect, foundPiece, foundEndpoint);
 
 		return true;
 	}
@@ -87,12 +98,6 @@ public class TilePicker : MonoBehaviour {
 	}
 
 	void removeExistingPieceIfAny(Vector3 coord) {
-		// choose which map to discard from: prefer removing train pieces first
-		GameObject pieceToRemove = tileMap.removeTrain(coord) ?? tileMap.removeRail(coord);
-		if (pieceToRemove != null) {
-			Destroy(pieceToRemove);
-			tileData.incrPiece(tileData.getId(pieceToRemove));
-		}
 	}
 
 	Vector3? findGridPlaneIntersection(Ray ray, bool snapToGrid) {
@@ -100,11 +105,11 @@ public class TilePicker : MonoBehaviour {
 		Plane plane = new Plane(Vector3.up, gridLinesObject.transform.position);
 		float rayDistance;
 		if (plane.Raycast(ray, out rayDistance)) {
+			Vector3 planeIntersectionLoc = ray.GetPoint(rayDistance);
 			if (snapToGrid) {
-				return gridLinesObject.GetComponent<GridLines>().closestTilePosition(ray.GetPoint(rayDistance));
-			} else {
-				return ray.direction * rayDistance;
+				return gridLinesObject.GetComponent<GridLines>().closestTilePosition(planeIntersectionLoc);
 			}
+			return planeIntersectionLoc;
 		}
 		return null;
 	}
@@ -119,12 +124,6 @@ public class TilePicker : MonoBehaviour {
 		}
 		if (pieceId >= 0 && tileData.hasPiece(pieceId)) {
 			GameObject piece = tileData.pieces[pieceId];
-
-			if (isTrain(piece) && !tileMap.buildTrack()) {
-				Debug.Log("Cannot set train b/c track building failed.");
-				pieceToSet = null;
-				return;
-			}
 
 			pieceToSet = GameObject.Instantiate(piece, Vector3.zero, Quaternion.identity) as GameObject;
 			placePieceInPreview();
@@ -159,10 +158,8 @@ public class TilePicker : MonoBehaviour {
 			return;
 		}
 		isDragging = false;
-		if (PointerIsOverUIElement) {
+		if (PointerIsOverUIElement || !performTilePlacement()) {
 			placePieceInPreview();
-		} else {
-			performTilePlacement();
 		}
 	}
 

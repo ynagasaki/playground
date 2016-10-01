@@ -2,138 +2,49 @@
 using System.Collections.Generic;
 
 public class TileMap : MonoBehaviour {
-	public GridLines gridLines;
+	class RailNode {
+		public TileRailPiece tileRail;
 
-	private readonly Dictionary<Vector2, GameObject> posToRailMap = new Dictionary<Vector2, GameObject>();
-	private readonly Dictionary<Vector2, GameObject> posToTrainMap = new Dictionary<Vector2, GameObject>();
-
-	private Vector2 toMapKey(Vector3 v) {
-		return new Vector2(v.x, v.z);
-	}
-
-	public bool railExists(Vector3 pos) {
-		return posToRailMap.ContainsKey(toMapKey(pos));
-	}
-
-	public bool trainExists(Vector3 pos) {
-		return posToTrainMap.ContainsKey(toMapKey(pos));
-	}
-
-	public GameObject getRail(Vector3 pos) {
-		return posToRailMap[toMapKey(pos)];
-	}
-
-	public GameObject getTrain(Vector3 pos) {
-		return posToTrainMap[toMapKey(pos)];
-	}
-
-	public void putRail(Vector3 pos, GameObject rail) {
-		posToRailMap[toMapKey(pos)] = rail;
-	}
-
-	public void putTrain(Vector3 pos, GameObject train) {
-		posToTrainMap[toMapKey(pos)] = train;
-	}
-
-	public GameObject removeRail(Vector3 pos) {
-		GameObject piece;
-		if (!posToRailMap.TryGetValue(toMapKey(pos), out piece)) {
-			return null;
+		public RailNode(GameObject railPiece) {
+			this.tileRail = railPiece.GetComponent<TileRailPiece>();
+			Debug.Assert(this.tileRail != null);
 		}
-		posToRailMap.Remove(toMapKey(pos));
-		return piece;
 	}
 
-	public GameObject removeTrain(Vector3 pos) {
-		GameObject piece;
-		if (!posToTrainMap.TryGetValue(toMapKey(pos), out piece)) {
-			return null;
+	int pieceCount = 0;
+	Stack<RailNode> currentEndpieces = new Stack<RailNode>();
+	Dictionary<Vector3, GameObject> currentEndpoints = new Dictionary<Vector3, GameObject>();
+
+	public bool IsEmpty {
+		get {
+			return pieceCount == 0;
 		}
-		posToTrainMap.Remove(toMapKey(pos));
-		return piece;
 	}
 
-	public bool buildTrack() {
-		int count = posToRailMap.Count;
-
-		if (count == 0) {
-			return false;
+	public void connect(GameObject railPiece, Vector3? endpoint, GameObject targetPiece, Vector3? targetEndpoint) {
+		if (IsEmpty) {
+			RailNode node = new RailNode(railPiece);
+			currentEndpieces.Push(node);
+			currentEndpoints.Add(node.tileRail.StartPoint, railPiece);
+			currentEndpoints.Add(node.tileRail.EndPoint, railPiece);
+			pieceCount++;
+			return;
 		}
 
-		float gridLineSpacing20Pct = gridLines.gridlineSpacing() * 0.2f;
+		Debug.Assert(endpoint.HasValue && targetEndpoint.HasValue && targetPiece != null);
+		Debug.Log("NEED TO DO!!");
+	}
 
-		// pick a tile, pick last endpoint
-		Dictionary<Vector2, GameObject>.Enumerator iter = posToRailMap.GetEnumerator();
-		iter.MoveNext();
-		GameObject tile = iter.Current.Value;
-		BezierCurve curve = tile.GetComponentInChildren<BezierCurve>();
-		GameObject startTile = tile;
-
-		do {
-			Vector3 endpoint = curve.points[curve.points.Length - 1];
-
-			// figure out the world space of the endpoint
-			Vector3 endpointWorldSpace = tile.transform.TransformPoint(endpoint);
-
-			// figure out if that leads to another tile
-			Vector3 slightlyOverTileBoundary = endpointWorldSpace + curve.GetDirection(1f) * gridLineSpacing20Pct;
-			Vector3 expectedNeighborTilePos = gridLines.closestTilePosition(slightlyOverTileBoundary);
-
-			// if not, return false
-			if (!posToRailMap.ContainsKey(toMapKey(expectedNeighborTilePos))) {
-				return false;
+	public bool getEndpointWithin(float sqrDist, Vector3 pos, out GameObject foundRailPiece, out Vector3? foundEndpoint) {
+		foundRailPiece = null;
+		foundEndpoint = null;
+		foreach (Vector3 endpoint in currentEndpoints.Keys) {
+			if ((pos - endpoint).sqrMagnitude <= sqrDist) {
+				foundEndpoint = endpoint;
+				foundRailPiece = currentEndpoints[endpoint];
+				return true;
 			}
-
-			// if so, [connect the pieces and] figure out if endpoints need to be swapped
-			GameObject neighborTile = posToRailMap[toMapKey(expectedNeighborTilePos)];
-			BezierCurve neighborCurve = neighborTile.GetComponentInChildren<BezierCurve>();
-			Vector3 neighborEndpoint = neighborCurve.points[neighborCurve.points.Length - 1];
-			Vector3 neighborEndpointWorldSpace = neighborTile.transform.TransformPoint(neighborEndpoint);
-
-			if (Mathf.Abs((endpointWorldSpace - neighborEndpointWorldSpace).magnitude) < gridLineSpacing20Pct) {
-				neighborCurve.reversePoints();
-			}
-
-			tile = neighborTile;
-			curve = neighborCurve;
-			count --;
-
-			// keep going; stop until loop is complete
-		} while (tile != startTile && count > 0);
-
-		// [figure out if we've hit all the tiles. if not, just remove the ones that we didn't hit i guess]
-		return tile == startTile;
-	}
-
-	public bool startTrain() {
-		if (posToTrainMap.Count == 0) {
-			return false;
 		}
-		Dictionary<Vector2, GameObject>.Enumerator iter = posToTrainMap.GetEnumerator();
-		iter.MoveNext();
-		iter.Current.Value.GetComponent<Train>().IsRunning = true;
-		return true;
-	}
-
-	public bool stopTrain() {
-		if (posToTrainMap.Count == 0) {
-			return false;
-		}
-		Dictionary<Vector2, GameObject>.Enumerator iter = posToTrainMap.GetEnumerator();
-		iter.MoveNext();
-		Train train = iter.Current.Value.GetComponent<Train>();
-		train.IsRunning = false;
-		train.setCurrentTile(posToRailMap[iter.Current.Key]);
-		train.setCurvePos(0.5f);
-		return true;
-	}
-
-	public GameObject getNextRail(Transform targetTransform) {
-		// determine the next rail piece by "jumping forward" a bit and seeing what tile that position corresponds to
-		Vector3 jumpedPos = targetTransform.position + targetTransform.forward * 0.1f;
-		Vector3 closestTilePos = this.gridLines.closestTilePosition(jumpedPos);
-		GameObject result = null;
-		this.posToRailMap.TryGetValue(toMapKey(closestTilePos), out result);
-		return result;
+		return false;
 	}
 }

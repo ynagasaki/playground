@@ -20,19 +20,9 @@ public class ButtonRunStop : MonoBehaviour {
 	}
 
 	public void runTrain() {
-		if (tileMap.startTrain()) {
-			editPanel.SetActive(false);
-			isRunning = true;
-			setText();
-		}
 	}
 
 	public void stopTrain() {
-		if (tileMap.stopTrain()) {
-			editPanel.SetActive(true);
-			isRunning = false;
-			setText();
-		}
 	}
 
 	void setText() {

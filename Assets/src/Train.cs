@@ -75,7 +75,7 @@ public class Train : MonoBehaviour {
 		}
 
 		if (this.curvePos > 1f) { // TODO: fix this
-			this.setCurrentTile(this.tileMap.getNextRail(this.transform));
+			IsRunning = false;
 			this.curvePos -= 1f;
 		}
 
