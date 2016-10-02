@@ -62,22 +62,21 @@ public class TilePicker : MonoBehaviour {
 	bool placeRailIfAppropriate(Vector3 coord) {
 		TileRailPiece tileRail = pieceToSet.GetComponent<TileRailPiece>();
 
-		GameObject foundPiece = null;
 		Vector3? foundEndpoint = null;
-		Vector3? endpointToConnect = null;
+		EndpointType? endpointTypeToConnect = null;
 
 		if (!tileMap.IsEmpty) {
 			// figure out if this is an appropriate place to drop our new piece
-			if (!tileMap.getEndpointWithin(WITHIN_DIST_SQR, tileRail.StartPoint, out foundPiece, out foundEndpoint)) {
-				if (!tileMap.getEndpointWithin(WITHIN_DIST_SQR, tileRail.EndPoint, out foundPiece, out foundEndpoint)) {
+			if (!tileMap.getEndpointWithin(WITHIN_DIST_SQR, tileRail.StartPoint, out foundEndpoint)) {
+				if (!tileMap.getEndpointWithin(WITHIN_DIST_SQR, tileRail.EndPoint, out foundEndpoint)) {
 					return false;
 				} else {
-					endpointToConnect = tileRail.EndPoint;
+					endpointTypeToConnect = EndpointType.End;
 				}
 			} else {
-				endpointToConnect = tileRail.StartPoint;
+				endpointTypeToConnect = EndpointType.Start;
 			}
-			Debug.Assert(foundPiece != null && foundEndpoint.HasValue && endpointToConnect.HasValue);
+			Debug.Assert(foundEndpoint.HasValue && endpointTypeToConnect.HasValue);
 		}
 
 		// drop the new piece
@@ -85,7 +84,7 @@ public class TilePicker : MonoBehaviour {
 		tileData.decrPiece(tileData.getId(pieceToSet));
 
 		// connect the piece to existing rail pieces
-		tileMap.connect(pieceToSet, endpointToConnect, foundPiece, foundEndpoint);
+		tileMap.connect(pieceToSet, endpointTypeToConnect, foundEndpoint);
 
 		return true;
 	}
