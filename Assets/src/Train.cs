@@ -4,8 +4,7 @@ using System.Collections;
 public class Train : MonoBehaviour {
 	public float maxSpeed = 10f;
 
-	private TileMap tileMap;
-	private GameObject currentTile;
+	private TileMap.RailNode currentRailNode;
 	private float curvePos;
 	private bool isRunning = false;
 
@@ -27,31 +26,24 @@ public class Train : MonoBehaviour {
 		}
 	}
 
-	void Start() {
-		GameObject tileMapObject = GameObject.Find("TileMap");
-		Debug.Assert(tileMapObject != null);
-		tileMap = tileMapObject.GetComponent<TileMap>();
-		Debug.Assert(tileMap != null);
-	}
-
-	public void setCurrentTile(GameObject tile) {
-		currentTile = tile;
+	public void setCurrentTile(TileMap.RailNode tile) {
+		currentRailNode = tile;
 
 		// TODO: clean this up, make this part of each tile or something; also, this
 		// should be more proactive
-		if (currentTile.name.Contains("corner")) {
+		if (currentRailNode.tileRail.name.Contains("corner")) {
 			targetSpeed = maxSpeed * 0.2f;
-		} else if (currentTile.name.Contains("straight")) {
+		} else if (currentRailNode.tileRail.name.Contains("straight")) {
 			targetSpeed = maxSpeed;
 		}
 	}
 
 	public void setCurvePos(float t) {
-		if (currentTile == null) {
+		if (currentRailNode == null) {
 			return;
 		}
 
-		BezierCurve curve = currentTile.GetComponentInChildren<BezierCurve>();
+		BezierCurve curve = currentRailNode.tileRail.GetComponentInChildren<BezierCurve>(); // move this to tile rail piece
 		if (curve == null) {
 			return;
 		}
@@ -62,7 +54,7 @@ public class Train : MonoBehaviour {
 	}
 
 	void Update() {
-		if (!IsRunning || this.currentTile == null) {
+		if (!IsRunning || this.currentRailNode == null) {
 			return;
 		}
 
@@ -75,7 +67,9 @@ public class Train : MonoBehaviour {
 		}
 
 		if (this.curvePos > 1f) { // TODO: fix this
-			IsRunning = false;
+			var tile = currentRailNode.getNext(currentRailNode.tileRail.EndPoint);
+			Debug.Assert(tile != null);
+			setCurrentTile(tile);
 			this.curvePos -= 1f;
 		}
 

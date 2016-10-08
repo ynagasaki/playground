@@ -39,7 +39,7 @@ public class TilePicker : MonoBehaviour {
 			Vector3? intersectionPoint = findGridPlaneIntersection(ray, true);
 			if (intersectionPoint.HasValue) {
 				if (pieceToSet != null) {
-					if (placePieceIfAppropriate(intersectionPoint.Value)) {
+					if (placeRailIfAppropriate(intersectionPoint.Value)) {
 						int pieceId = tileData.getId(pieceToSet);
 						pieceToSet = null;
 						setPiece(pieceId);
@@ -53,10 +53,6 @@ public class TilePicker : MonoBehaviour {
 
 	bool isTrain(GameObject piece) {
 		return piece.GetComponent<Train>() != null;
-	}
-
-	bool placeTrainIfAppropriate(Vector3 coord) {
-		return false;
 	}
 
 	bool placeRailIfAppropriate(Vector3 coord) {
@@ -89,14 +85,8 @@ public class TilePicker : MonoBehaviour {
 		return true;
 	}
 
-	bool placePieceIfAppropriate(Vector3 coord) {
-		if (isTrain(pieceToSet)) {
-			return placeTrainIfAppropriate(coord);
-		}
-		return placeRailIfAppropriate(coord);
-	}
-
 	void removeExistingPieceIfAny(Vector3 coord) {
+		Debug.Log("Not implemented!!!");
 	}
 
 	Vector3? findGridPlaneIntersection(Ray ray, bool snapToGrid) {
@@ -123,7 +113,6 @@ public class TilePicker : MonoBehaviour {
 		}
 		if (pieceId >= 0 && tileData.hasPiece(pieceId)) {
 			GameObject piece = tileData.pieces[pieceId];
-
 			pieceToSet = GameObject.Instantiate(piece, Vector3.zero, Quaternion.identity) as GameObject;
 			placePieceInPreview();
 		} else {

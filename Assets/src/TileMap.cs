@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 
 public class TileMap : MonoBehaviour {
-	class RailNode {
+	public class RailNode {
 		public TileRailPiece tileRail;
 		public Dictionary<Vector3, RailNode> nexts;
 
@@ -11,14 +11,35 @@ public class TileMap : MonoBehaviour {
 			this.nexts = new Dictionary<Vector3, RailNode>();
 			Debug.Assert(this.tileRail != null);
 		}
+
+		public RailNode getNext(Vector3 v) {
+			foreach (Vector3 k in nexts.Keys) {
+				if (v == k) {
+					return this.nexts[k];
+				}
+			}
+			return null;
+		}
 	}
 
-	private int pieceCount = 0;
+	private RailNode head = null;
 	private Dictionary<Vector3, RailNode> currentEndpoints = new Dictionary<Vector3, RailNode>();
 
 	public bool IsEmpty {
 		get {
-			return pieceCount == 0;
+			return head == null;
+		}
+	}
+
+	public RailNode StartNode {
+		get {
+			return head;
+		}
+	}
+
+	public bool IsReady {
+		get {
+			return currentEndpoints.Count == 0 && !IsEmpty;
 		}
 	}
 
@@ -28,12 +49,13 @@ public class TileMap : MonoBehaviour {
 		if (IsEmpty) {
 			currentEndpoints.Add(node.tileRail.StartPoint, node);
 			currentEndpoints.Add(node.tileRail.EndPoint, node);
-			pieceCount++;
+			head = node;
 			return;
 		}
 
 		Debug.Assert(whichEnd.HasValue && targetEndpoint.HasValue);
 
+		string debugMessage = "";
 		Vector3 endpoint = whichEnd.Value == EndpointType.Start ? node.tileRail.StartPoint : node.tileRail.EndPoint;
 
 		Debug.Assert(targetEndpoint.Value == endpoint);
@@ -44,7 +66,7 @@ public class TileMap : MonoBehaviour {
 		EndpointType newEndpointType = getEndpointType(node, endpoint);
 
 		if (targetEndpointType == newEndpointType) {
-			Debug.Log("reversing path");
+			debugMessage += "reversing path;";
 			node.tileRail.reversePath();
 			newEndpointType = getEndpointType(node, endpoint);
 		}
@@ -67,7 +89,7 @@ public class TileMap : MonoBehaviour {
 				// link up the nexts
 				setupNext(looseEndNode, danglingEndpointType, node, danglingEndpoint);
 
-				Debug.Log("Linked up dangling loose-end node.");
+				debugMessage += "Linked up dangling loose-end node;";
 				currentEndpoints.Remove(danglingEndpoint);
 				closedLoop = true;
 
@@ -81,8 +103,7 @@ public class TileMap : MonoBehaviour {
 			currentEndpoints.Add(otherEnd, node);
 		}
 
-		Debug.Log("currentEndpoints size: " + currentEndpoints.Count);
-		pieceCount++;
+		Debug.Log(debugMessage + "currentEndpoints size: " + currentEndpoints.Count);
 	}
 
 	public bool getEndpointWithin(float sqrDist, Vector3 pos, out Vector3? foundEndpoint) {
