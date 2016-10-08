@@ -21,6 +21,10 @@ public class TileRailPiece : MonoBehaviour {
 		}
 	}
 
+	public Vector3 getDirection(float t) {
+		return this.curve.GetDirection(t);
+	}
+
 	public void reversePath() {
 		this.curve.reversePoints();
 	}

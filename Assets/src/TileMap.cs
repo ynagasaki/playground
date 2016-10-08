@@ -43,20 +43,32 @@ public class TileMap : MonoBehaviour {
 		}
 	}
 
-	public void connect(GameObject railPiece, EndpointType? whichEnd, Vector3? targetEndpoint) {
+	public bool connect(GameObject railPiece, EndpointType? whichEnd, Vector3? targetEndpoint) {
 		RailNode node = new RailNode(railPiece);
 
 		if (IsEmpty) {
 			currentEndpoints.Add(node.tileRail.StartPoint, node);
 			currentEndpoints.Add(node.tileRail.EndPoint, node);
 			head = node;
-			return;
+			return true;
 		}
 
 		Debug.Assert(whichEnd.HasValue && targetEndpoint.HasValue);
 
 		string debugMessage = "";
 		Vector3 endpoint = whichEnd.Value == EndpointType.Start ? node.tileRail.StartPoint : node.tileRail.EndPoint;
+
+		// make sure it has an appropriate rotation
+		Vector3 dir = node.tileRail.getDirection(whichEnd.Value == EndpointType.Start ? 0f : 1f);
+
+		// if the angle between the two direction vectors is > 5 deg or < 175 deg then error
+		TileRailPiece targetTile = currentEndpoints[targetEndpoint.Value].tileRail;
+		Vector3 targetDir = targetTile.getDirection(targetTile.StartPoint == targetEndpoint.Value ? 0f : 1f);
+		float angle = Mathf.Acos(Vector3.Dot(targetDir, dir));\
+		if (angle > Mathf.Deg2Rad * 3f && angle < Mathf.Deg2Rad * 175f) {
+			Debug.Log("Not placing piece, because not continuous.");
+			return false;
+		}
 
 		Debug.Assert(targetEndpoint.Value == endpoint);
 
@@ -104,6 +116,7 @@ public class TileMap : MonoBehaviour {
 		}
 
 		Debug.Log(debugMessage + "currentEndpoints size: " + currentEndpoints.Count);
+		return true;
 	}
 
 	public bool getEndpointWithin(float sqrDist, Vector3 pos, out Vector3? foundEndpoint) {

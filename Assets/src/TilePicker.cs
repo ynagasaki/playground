@@ -65,6 +65,7 @@ public class TilePicker : MonoBehaviour {
 			// figure out if this is an appropriate place to drop our new piece
 			if (!tileMap.getEndpointWithin(WITHIN_DIST_SQR, tileRail.StartPoint, out foundEndpoint)) {
 				if (!tileMap.getEndpointWithin(WITHIN_DIST_SQR, tileRail.EndPoint, out foundEndpoint)) {
+					Debug.Log("Not close enough.");
 					return false;
 				} else {
 					endpointTypeToConnect = EndpointType.End;
@@ -75,14 +76,16 @@ public class TilePicker : MonoBehaviour {
 			Debug.Assert(foundEndpoint.HasValue && endpointTypeToConnect.HasValue);
 		}
 
-		// drop the new piece
+		// this has to be set first...
 		pieceToSet.transform.position = coord;
-		tileData.decrPiece(tileData.getId(pieceToSet));
-
 		// connect the piece to existing rail pieces
-		tileMap.connect(pieceToSet, endpointTypeToConnect, foundEndpoint);
+		if (tileMap.connect(pieceToSet, endpointTypeToConnect, foundEndpoint)) {
+			// drop the new piece
+			tileData.decrPiece(tileData.getId(pieceToSet));
+			return true;
+		}
 
-		return true;
+		return false;
 	}
 
 	void removeExistingPieceIfAny(Vector3 coord) {
