@@ -64,7 +64,7 @@ public class TileMap : MonoBehaviour {
 		// if the angle between the two direction vectors is > 5 deg or < 175 deg then error
 		TileRailPiece targetTile = currentEndpoints[targetEndpoint.Value].tileRail;
 		Vector3 targetDir = targetTile.getDirection(targetTile.StartPoint == targetEndpoint.Value ? 0f : 1f);
-		float angle = Mathf.Acos(Vector3.Dot(targetDir, dir));\
+		float angle = Mathf.Acos(Vector3.Dot(targetDir, dir));
 		if (angle > Mathf.Deg2Rad * 3f && angle < Mathf.Deg2Rad * 175f) {
 			Debug.Log("Not placing piece, because not continuous.");
 			return false;
