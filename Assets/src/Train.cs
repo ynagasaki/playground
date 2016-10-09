@@ -32,7 +32,7 @@ public class Train : MonoBehaviour {
 		// TODO: clean this up, make this part of each tile or something; also, this
 		// should be more proactive
 		if (currentRailNode.tileRail.name.Contains("corner")) {
-			targetSpeed = maxSpeed * 0.2f;
+			targetSpeed = maxSpeed * 0.5f;
 		} else if (currentRailNode.tileRail.name.Contains("straight")) {
 			targetSpeed = maxSpeed;
 		}
@@ -43,14 +43,9 @@ public class Train : MonoBehaviour {
 			return;
 		}
 
-		BezierCurve curve = currentRailNode.tileRail.GetComponentInChildren<BezierCurve>(); // move this to tile rail piece
-		if (curve == null) {
-			return;
-		}
-
-		this.transform.position = curve.GetPoint(t);
-		this.transform.forward = curve.GetDirection(t);
 		this.curvePos = t;
+		this.transform.position = currentRailNode.tileRail.getPosition(t);
+		this.transform.forward = currentRailNode.tileRail.getDirection(t);
 	}
 
 	void Update() {
@@ -58,7 +53,9 @@ public class Train : MonoBehaviour {
 			return;
 		}
 
-		this.curvePos += Time.deltaTime * currSpeed;
+		// curve pos (=t) is the ratio of distance traveled to length of the rail's entire b-curve
+		float distanceTraveled = Time.deltaTime * currSpeed;
+		this.curvePos += distanceTraveled / currentRailNode.tileRail.getApproxLength();
 
 		if (currSpeed < targetSpeed) {
 			this.currSpeed = Mathf.Min(currSpeed + Time.deltaTime, targetSpeed);
@@ -66,7 +63,7 @@ public class Train : MonoBehaviour {
 			this.currSpeed = Mathf.Max(currSpeed - Time.deltaTime * 5f, targetSpeed);
 		}
 
-		if (this.curvePos > 1f) { // TODO: fix this
+		if (this.curvePos > 1f) { // TODO: fix this for when train goes so fast it should skip a rail piece
 			var tile = currentRailNode.getNext(currentRailNode.tileRail.EndPoint);
 			Debug.Assert(tile != null);
 			setCurrentTile(tile);

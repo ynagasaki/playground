@@ -3,10 +3,12 @@ using System.Collections;
 
 public class TileRailPiece : MonoBehaviour {
 	private BezierCurve curve;
+	private float approxLength;
 
 	void Start() {
 		this.curve = GetComponentInChildren<BezierCurve>();
 		Debug.Assert(this.curve != null);
+		this.approxLength = this.curve.ApproximateLength;
 	}
 
 	public Vector3 StartPoint {
@@ -25,7 +27,15 @@ public class TileRailPiece : MonoBehaviour {
 		return this.curve.GetDirection(t);
 	}
 
+	public Vector3 getPosition(float t) {
+		return this.curve.GetPoint(t);
+	}
+
 	public void reversePath() {
 		this.curve.reversePoints();
+	}
+
+	public float getApproxLength() {
+		return approxLength;
 	}
 }

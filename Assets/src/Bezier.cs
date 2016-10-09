@@ -22,4 +22,23 @@ public class Bezier {
 			6f * oneMinusT * t * (p2 - p1) +
 			3f * t * t * (p3 - p2);
 	}
+
+	public static float estimateLength(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3) {
+		float t = 0f;
+		float len = 0f;
+		Vector3? lastPoint = null;
+		while (t <= 1f) {
+			Vector3 currPoint = GetPoint(p0, p1, p2, p3, t);
+			if (lastPoint != null) {
+				len += (currPoint - lastPoint.Value).magnitude;
+			}
+			lastPoint = currPoint;
+			t += 0.001f;
+		}
+		if (t > 1f) {
+			Vector3 currPoint = GetPoint(p0, p1, p2, p3, 1f);
+			len += (currPoint - lastPoint.Value).magnitude;
+		}
+		return len;
+	}
 }
