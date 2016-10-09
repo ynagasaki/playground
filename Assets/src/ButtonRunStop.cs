@@ -19,6 +19,7 @@ public class ButtonRunStop : MonoBehaviour {
 		} else {
 			runTrain();
 		}
+		setText();
 	}
 
 	public void runTrain() {
@@ -36,7 +37,9 @@ public class ButtonRunStop : MonoBehaviour {
 		}
 
 		trainInstance.setCurrentTile(tileMap.StartNode);
+		trainInstance.setCurvePos(0f);
 		trainInstance.IsRunning = isRunning = true;
+		editPanel.SetActive(false);
 	}
 
 	public void stopTrain() {
@@ -46,6 +49,8 @@ public class ButtonRunStop : MonoBehaviour {
 
 		trainInstance.IsRunning = isRunning = false;
 		trainInstance.setCurrentTile(tileMap.StartNode);
+		trainInstance.setCurvePos(0f);
+		editPanel.SetActive(true);
 	}
 
 	void setText() {
