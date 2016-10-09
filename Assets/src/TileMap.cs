@@ -2,138 +2,147 @@
 using System.Collections.Generic;
 
 public class TileMap : MonoBehaviour {
-	public GridLines gridLines;
+	public class RailNode {
+		public TileRailPiece tileRail;
+		public Dictionary<Vector3, RailNode> nexts;
 
-	private readonly Dictionary<Vector2, GameObject> posToRailMap = new Dictionary<Vector2, GameObject>();
-	private readonly Dictionary<Vector2, GameObject> posToTrainMap = new Dictionary<Vector2, GameObject>();
+		public RailNode(GameObject railPiece) {
+			this.tileRail = railPiece.GetComponent<TileRailPiece>();
+			this.nexts = new Dictionary<Vector3, RailNode>();
+			Debug.Assert(this.tileRail != null);
+		}
 
-	private Vector2 toMapKey(Vector3 v) {
-		return new Vector2(v.x, v.z);
-	}
-
-	public bool railExists(Vector3 pos) {
-		return posToRailMap.ContainsKey(toMapKey(pos));
-	}
-
-	public bool trainExists(Vector3 pos) {
-		return posToTrainMap.ContainsKey(toMapKey(pos));
-	}
-
-	public GameObject getRail(Vector3 pos) {
-		return posToRailMap[toMapKey(pos)];
-	}
-
-	public GameObject getTrain(Vector3 pos) {
-		return posToTrainMap[toMapKey(pos)];
-	}
-
-	public void putRail(Vector3 pos, GameObject rail) {
-		posToRailMap[toMapKey(pos)] = rail;
-	}
-
-	public void putTrain(Vector3 pos, GameObject train) {
-		posToTrainMap[toMapKey(pos)] = train;
-	}
-
-	public GameObject removeRail(Vector3 pos) {
-		GameObject piece;
-		if (!posToRailMap.TryGetValue(toMapKey(pos), out piece)) {
+		public RailNode getNext(Vector3 v) {
+			foreach (Vector3 k in nexts.Keys) {
+				if (v == k) {
+					return this.nexts[k];
+				}
+			}
 			return null;
 		}
-		posToRailMap.Remove(toMapKey(pos));
-		return piece;
 	}
 
-	public GameObject removeTrain(Vector3 pos) {
-		GameObject piece;
-		if (!posToTrainMap.TryGetValue(toMapKey(pos), out piece)) {
-			return null;
+	private RailNode head = null;
+	private Dictionary<Vector3, RailNode> currentEndpoints = new Dictionary<Vector3, RailNode>();
+
+	public bool IsEmpty {
+		get {
+			return head == null;
 		}
-		posToTrainMap.Remove(toMapKey(pos));
-		return piece;
 	}
 
-	public bool buildTrack() {
-		int count = posToRailMap.Count;
+	public RailNode StartNode {
+		get {
+			return head;
+		}
+	}
 
-		if (count == 0) {
+	public bool IsReady {
+		get {
+			return currentEndpoints.Count == 0 && !IsEmpty;
+		}
+	}
+
+	public bool connect(GameObject railPiece, EndpointType? whichEnd, Vector3? targetEndpoint) {
+		RailNode node = new RailNode(railPiece);
+
+		if (IsEmpty) {
+			currentEndpoints.Add(node.tileRail.StartPoint, node);
+			currentEndpoints.Add(node.tileRail.EndPoint, node);
+			head = node;
+			return true;
+		}
+
+		Debug.Assert(whichEnd.HasValue && targetEndpoint.HasValue);
+
+		string debugMessage = "";
+		Vector3 endpoint = whichEnd.Value == EndpointType.Start ? node.tileRail.StartPoint : node.tileRail.EndPoint;
+
+		// make sure it has an appropriate rotation
+		Vector3 dir = node.tileRail.getDirection(whichEnd.Value == EndpointType.Start ? 0f : 1f);
+
+		// if the angle between the two direction vectors is > 5 deg or < 175 deg then error
+		TileRailPiece targetTile = currentEndpoints[targetEndpoint.Value].tileRail;
+		Vector3 targetDir = targetTile.getDirection(targetTile.StartPoint == targetEndpoint.Value ? 0f : 1f);
+		float angle = Mathf.Acos(Vector3.Dot(targetDir, dir));
+		if (angle > Mathf.Deg2Rad * 3f && angle < Mathf.Deg2Rad * 175f) {
+			Debug.Log("Not placing piece, because not continuous.");
 			return false;
 		}
 
-		float gridLineSpacing20Pct = gridLines.gridlineSpacing() * 0.2f;
+		Debug.Assert(targetEndpoint.Value == endpoint);
 
-		// pick a tile, pick last endpoint
-		Dictionary<Vector2, GameObject>.Enumerator iter = posToRailMap.GetEnumerator();
-		iter.MoveNext();
-		GameObject tile = iter.Current.Value;
-		BezierCurve curve = tile.GetComponentInChildren<BezierCurve>();
-		GameObject startTile = tile;
+		// reorient the new rail piece's curve's direction to match the target piece
+		RailNode targetNode = currentEndpoints[targetEndpoint.Value];
+		EndpointType targetEndpointType = getEndpointType(targetNode, targetEndpoint.Value);
+		EndpointType newEndpointType = getEndpointType(node, endpoint);
 
-		do {
-			Vector3 endpoint = curve.points[curve.points.Length - 1];
-
-			// figure out the world space of the endpoint
-			Vector3 endpointWorldSpace = tile.transform.TransformPoint(endpoint);
-
-			// figure out if that leads to another tile
-			Vector3 slightlyOverTileBoundary = endpointWorldSpace + curve.GetDirection(1f) * gridLineSpacing20Pct;
-			Vector3 expectedNeighborTilePos = gridLines.closestTilePosition(slightlyOverTileBoundary);
-
-			// if not, return false
-			if (!posToRailMap.ContainsKey(toMapKey(expectedNeighborTilePos))) {
-				return false;
-			}
-
-			// if so, [connect the pieces and] figure out if endpoints need to be swapped
-			GameObject neighborTile = posToRailMap[toMapKey(expectedNeighborTilePos)];
-			BezierCurve neighborCurve = neighborTile.GetComponentInChildren<BezierCurve>();
-			Vector3 neighborEndpoint = neighborCurve.points[neighborCurve.points.Length - 1];
-			Vector3 neighborEndpointWorldSpace = neighborTile.transform.TransformPoint(neighborEndpoint);
-
-			if (Mathf.Abs((endpointWorldSpace - neighborEndpointWorldSpace).magnitude) < gridLineSpacing20Pct) {
-				neighborCurve.reversePoints();
-			}
-
-			tile = neighborTile;
-			curve = neighborCurve;
-			count --;
-
-			// keep going; stop until loop is complete
-		} while (tile != startTile && count > 0);
-
-		// [figure out if we've hit all the tiles. if not, just remove the ones that we didn't hit i guess]
-		return tile == startTile;
-	}
-
-	public bool startTrain() {
-		if (posToTrainMap.Count == 0) {
-			return false;
+		if (targetEndpointType == newEndpointType) {
+			debugMessage += "reversing path;";
+			node.tileRail.reversePath();
+			newEndpointType = getEndpointType(node, endpoint);
 		}
-		Dictionary<Vector2, GameObject>.Enumerator iter = posToTrainMap.GetEnumerator();
-		iter.MoveNext();
-		iter.Current.Value.GetComponent<Train>().IsRunning = true;
+
+		// set up the nexts (target -> new node, or new node -> target)
+		setupNext(targetNode, targetEndpointType, node, endpoint);
+
+		// see if any of the remaining endpoints need to connect to the new node's other end (i.e. completing a loop)
+		Vector3 otherEnd = (newEndpointType == EndpointType.Start) ? node.tileRail.EndPoint : node.tileRail.StartPoint;
+		bool closedLoop = false;
+
+		foreach (Vector3 danglingEndpoint in this.currentEndpoints.Keys) {
+			if (danglingEndpoint == otherEnd) {
+				RailNode looseEndNode = currentEndpoints[danglingEndpoint];
+				EndpointType danglingEndpointType = getEndpointType(looseEndNode, danglingEndpoint);
+
+				// the loose-end-endpoint should be the opposite end-type as "other end"
+				Debug.Assert(danglingEndpointType == newEndpointType);
+
+				// link up the nexts
+				setupNext(looseEndNode, danglingEndpointType, node, danglingEndpoint);
+
+				debugMessage += "Linked up dangling loose-end node;";
+				currentEndpoints.Remove(danglingEndpoint);
+				closedLoop = true;
+
+				break;
+			}
+		}
+
+		// update the current endpoints...
+		currentEndpoints.Remove(targetEndpoint.Value);
+		if (!closedLoop) {
+			currentEndpoints.Add(otherEnd, node);
+		}
+
+		Debug.Log(debugMessage + "currentEndpoints size: " + currentEndpoints.Count);
 		return true;
 	}
 
-	public bool stopTrain() {
-		if (posToTrainMap.Count == 0) {
-			return false;
+	public bool getEndpointWithin(float sqrDist, Vector3 pos, out Vector3? foundEndpoint) {
+		foundEndpoint = null;
+		foreach (Vector3 endpoint in currentEndpoints.Keys) {
+			if ((pos - endpoint).sqrMagnitude <= sqrDist) {
+				foundEndpoint = endpoint;
+				return true;
+			}
 		}
-		Dictionary<Vector2, GameObject>.Enumerator iter = posToTrainMap.GetEnumerator();
-		iter.MoveNext();
-		Train train = iter.Current.Value.GetComponent<Train>();
-		train.IsRunning = false;
-		train.setCurrentTile(posToRailMap[iter.Current.Key]);
-		train.setCurvePos(0.5f);
-		return true;
+		return false;
 	}
 
-	public GameObject getNextRail(Transform targetTransform) {
-		// determine the next rail piece by "jumping forward" a bit and seeing what tile that position corresponds to
-		Vector3 jumpedPos = targetTransform.position + targetTransform.forward * 0.1f;
-		Vector3 closestTilePos = this.gridLines.closestTilePosition(jumpedPos);
-		GameObject result = null;
-		this.posToRailMap.TryGetValue(toMapKey(closestTilePos), out result);
-		return result;
+	private void setupNext(RailNode node1, EndpointType node1EndpointType, RailNode node2, Vector3 endpoint) {
+		if (node1EndpointType == EndpointType.End) {
+			node1.nexts.Add(endpoint, node2);
+		} else {
+			node2.nexts.Add(endpoint, node1);
+		}
+	}
+
+	private EndpointType getEndpointType(RailNode node, Vector3 endpoint) {
+		if (node.tileRail.EndPoint == endpoint) {
+			return EndpointType.End;
+		}
+		Debug.Assert(node.tileRail.StartPoint == endpoint);
+		return EndpointType.Start;
 	}
 }

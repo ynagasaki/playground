@@ -60,4 +60,10 @@ public class BezierCurve : MonoBehaviour {
 	public Vector3 GetDirection(float t) {
 		return GetVelocity(t).normalized;
 	}
+
+	public float ApproximateLength {
+		get {
+			return Bezier.estimateLength(points[0], points[1], points[2], points[3]);
+		}
+	}
 }
